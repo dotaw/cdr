@@ -49,7 +49,7 @@
 #define CDR_STORAGE_ALARM_THRESHOLD      10    /* 硬盘空间剩余10%告警，部分数据覆盖存储 */
 #define CDR_STORAGE_NULL_THRESHOLD       2     /* 硬盘空间剩余2%告警，所有的数据都要覆盖存储 */
 
-#define CDR_DEV_RUNNING_TIME_THRESHOLD   5   /* 超过门限没有坚持到设备心跳，认为设备关机，单位秒 */
+#define CDR_DEV_RUNNING_TIME_THRESHOLD   10    /* 超过门限没有坚持到设备心跳，认为设备关机，单位秒 */
 
 #define CDR_ID_TO_PRIORITY(id)     (((id) >> 26) & 0x7)    /* 根据CAN ID解析PRIORITY */
 #define CDR_ID_TO_RSV(id)          (((id) >> 24) & 0x3)    /* 根据CAN ID解析RSV */
@@ -124,9 +124,9 @@ typedef enum cdr_user_log_type {
     CDR_USR_LOG_TYPE_INIT_PTHREAD,              /* 用户日志事件类型：4、线程启动 */
     CDR_USR_LOG_TYPE_FILE_RECORD_FAULT,         /* 用户日志事件类型：5、文件存储记录 */
     CDR_USR_LOG_TYPE_MYSQL_RECORD_FAULT,        /* 用户日志事件类型：6、数据库记录数据 */
-	CDR_USR_LOG_TYPE_STORAGE_WARNING,           /* 用户日志事件类型：7、存储空间不足提示 */
-	CDR_USR_LOG_TYPE_STORAGE_ALARM,             /* 用户日志事件类型：8、存储空间不足告警 */
-	CDR_USR_LOG_TYPE_STORAGE_NULL,              /* 用户日志事件类型：9、存储空间不足 */
+    CDR_USR_LOG_TYPE_STORAGE_WARNING,           /* 用户日志事件类型：7、存储空间不足提示 */
+    CDR_USR_LOG_TYPE_STORAGE_ALARM,             /* 用户日志事件类型：8、存储空间不足告警 */
+    CDR_USR_LOG_TYPE_STORAGE_NULL,              /* 用户日志事件类型：9、存储空间不足 */
 } cdr_user_log_type_t;
 
 typedef enum cdr_event {  
@@ -149,17 +149,17 @@ typedef struct cdr_dev_run_time {
     int num;                                               /* 当前记录到设备运行总数 */                                 
     int is_update[CDR_DEV_RUNTIME_MAX_NUM];                /* 是否需要更新设备的运行时间*/
     int add_id[CDR_DEV_RUNTIME_MAX_NUM];                   /* 设备运行时间记录在数据库中的位置 */
-	int sa[CDR_DEV_RUNTIME_MAX_NUM];                       /* 当前设备的sa标识 */
+    int sa[CDR_DEV_RUNTIME_MAX_NUM];                       /* 当前设备的sa标识 */
     char power_on_time[CDR_DEV_RUNTIME_MAX_NUM][28];       /* 当前设备的上电时间 */
     char power_off_time[CDR_DEV_RUNTIME_MAX_NUM][28];      /* 当前设备的下电时间 */
 } cdr_dev_run_time_t;
 
 typedef struct cdr_led_set_state {
     int state;                                             /* LED的状态 */
-	char set_red[4];                                       /* 红灯是否输出 */
-	char set_green[4];                                     /* 绿灯是否输出 */
-	char set_yellow[4];                                    /* 黄灯是否输出 */
-	int is_flash;                                          /* 灯是否闪烁 */
+    char set_red[4];                                       /* 红灯是否输出 */
+    char set_green[4];                                     /* 绿灯是否输出 */
+    char set_yellow[4];                                    /* 黄灯是否输出 */
+    int is_flash;                                          /* 灯是否闪烁 */
 } cdr_led_set_state_t;
 
 /* ---------------------------------------- 全局变量定义 ---------------------------------------- */
@@ -177,6 +177,7 @@ int g_system_event_no_occur_num[CDR_EVENT_MAX];   /* 系统事件连续没有发
 int g_wdt_fd;                                     /* 看门狗 */
 int g_pthread_record_data_active;                 /* 数据记录线程是否正常运行 */  
 int g_pthread_data_to_mysql_active;               /* 数据存储线程是否正常运行 */          
+int g_time_calibration_invalid;                   /* 时间校准是否生效，开机运行仅第一次时间校准生效 */
 cdr_led_set_state_t g_led_state;                  /* LED状态灯当前状态 */
 cdr_dev_run_time_t g_dev_run_time;                /* 设备的运行时间记录 */
 MYSQL *g_mysql_conn;                              /* 代开的数据库id */

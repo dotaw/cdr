@@ -183,7 +183,7 @@ int cdr_get_file_num(char *path, char *file_name)
         return file_num;
     }
 
-	/* 循环读取目录 */    
+    /* 循环读取目录 */    
     while((ptr = readdir(dir)) != NULL)
     {
         if(ptr->d_type == 8)    //8：代表文件file类型
@@ -204,37 +204,37 @@ void cdr_get_oldest_filename(char *path, char *file_name)
 {
     DIR *dir = opendir(path);
     struct dirent *ptr = NULL;
-	unsigned long long file_create_time = 0;
-	unsigned long long temp = 0;
+    unsigned long long file_create_time = 0;
+    unsigned long long temp = 0;
     char name[200] = {0};
-	char dir_file[200] = {0};
-	
+    char dir_file[200] = {0};
+    
     if (dir == NULL)
     {
         return;
     }
     
-	/* 循环读取目录 */
+    /* 循环读取目录 */
     while((ptr = readdir(dir)) != NULL)
     {
         if(ptr->d_type == 8)    //8：代表文件file类型
         {
-			/* 目录+文件名，确认文件 */
-			memset(dir_file, 0, sizeof(dir_file));
-			sprintf(dir_file, "%s%s", path, ptr->d_name);
-			
-			/* 检查是否最旧的文件 */
-			temp = get_file_create_time(dir_file);
-			if ((file_create_time == 0) || (temp < file_create_time))
-			{
-				file_create_time = temp;
-				memset(name, 0, sizeof(name));
-				sprintf(name, "%s", dir_file);
-			}
+            /* 目录+文件名，确认文件 */
+            memset(dir_file, 0, sizeof(dir_file));
+            sprintf(dir_file, "%s%s", path, ptr->d_name);
+            
+            /* 检查是否最旧的文件 */
+            temp = get_file_create_time(dir_file);
+            if ((file_create_time == 0) || (temp < file_create_time))
+            {
+                file_create_time = temp;
+                memset(name, 0, sizeof(name));
+                sprintf(name, "%s", dir_file);
+            }
         }
     }
     
-	sprintf(file_name, "%s", name);
+    sprintf(file_name, "%s", name);
     closedir(dir);
     return;
 }
@@ -243,26 +243,26 @@ void cdr_get_oldest_filename(char *path, char *file_name)
 void cdr_user_log(int type, int result)
 {
     FILE *fp;
-	char time_info[30] = {0};
-	
-	g_user_log_no_proc_times = 0;
-	
+    char time_info[30] = {0};
+    
+    g_user_log_no_proc_times = 0;
+    
     cdr_wait_last_userlog_proc();
-    g_userlog_record_busy = 1;	
-	
-	if ((fp = fopen("/opt/myapp/cdr_recorder/log/log.log","a")) == NULL)
+    g_userlog_record_busy = 1;    
+    
+    if ((fp = fopen("/opt/myapp/cdr_recorder/log/log.log","a")) == NULL)
     {
         printf("The file %s can not be opened.\r\n", "log.log");
         g_userlog_record_busy = 0;
         return;
     }
-	
-	cdr_get_system_time(CDR_TIME_S, time_info);
-	fprintf(fp, "'%s', '%u', '%s'\r\n", time_info, type, (result == CDR_OK) ? "pass" : "fail");
-	fclose(fp);
-	
-	g_userlog_record_busy = 0;
-	cdr_diag_log(CDR_LOG_DEBUG, "cdr_user_log ok, type=%u, result=%u", type, result);
+    
+    cdr_get_system_time(CDR_TIME_S, time_info);
+    fprintf(fp, "'%s', '%u', '%s'\r\n", time_info, type, (result == CDR_OK) ? "pass" : "fail");
+    fclose(fp);
+    
+    g_userlog_record_busy = 0;
+    cdr_diag_log(CDR_LOG_DEBUG, "cdr_user_log ok, type=%u, result=%u", type, result);
     return;
 }
 
@@ -288,13 +288,13 @@ void cdr_diag_log(int type, const char *format, ...)
     if ((fp = fopen("/opt/myapp/cdr_recorder/diag/diag.log","a")) == NULL)
     {
         printf("The file %s can not be opened.\r\n", "diag.log");
-		printf("errno=%d\n",errno);
-		printf("Mesg:%s\n",strerror(errno));
+        printf("errno=%d\n",errno);
+        printf("Mesg:%s\n",strerror(errno));
         g_diaglog_record_busy = 0;
         return;
     }
     
-	/* 在日志开始加上时间 */
+    /* 在日志开始加上时间 */
     cdr_get_system_time(CDR_TIME_MS, time_info);
     fprintf(fp, "%23s [%5s]: ", time_info, cdr_log_type(type));
     
@@ -308,21 +308,21 @@ void cdr_diag_log(int type, const char *format, ...)
     /* 当日志大小大于CDR_FILE_DIR_MAX_SIZE_BYTE时，需要另起新文件记录 */
     if (get_file_size("/opt/myapp/cdr_recorder/diag/diag.log") >= CDR_FILE_DIR_MAX_SIZE_BYTE)
     {
-		/* 预留的文件数量超过门限，删除最老的文件 */
-		while (1)
-		{
-			if (cdr_get_file_num("/opt/myapp/cdr_recorder/diag/bf/", ".log") >= CDR_DIR_BF_MAX_NUM)
-			{
-				memset(file_info, 0 , sizeof(file_info));
-				cdr_get_oldest_filename("/opt/myapp/cdr_recorder/diag/bf/", file_info);				
-				remove(file_info);
-				printf("delete oldest diaglog file %s\r\n", file_info);
-				continue;
-			}
-			break;
-		}
-		
-		memset(file_info, 0 , sizeof(file_info));
+        /* 预留的文件数量超过门限，删除最老的文件 */
+        while (1)
+        {
+            if (cdr_get_file_num("/opt/myapp/cdr_recorder/diag/bf/", ".log") >= CDR_DIR_BF_MAX_NUM)
+            {
+                memset(file_info, 0 , sizeof(file_info));
+                cdr_get_oldest_filename("/opt/myapp/cdr_recorder/diag/bf/", file_info);                
+                remove(file_info);
+                printf("delete oldest diaglog file %s\r\n", file_info);
+                continue;
+            }
+            break;
+        }
+        
+        memset(file_info, 0 , sizeof(file_info));
         sprintf(file_info, "/opt/myapp/cdr_recorder/diag/bf/diag%s.log", time_info);
         rename("/opt/myapp/cdr_recorder/diag/diag.log", file_info);
     }
@@ -385,69 +385,69 @@ int cdr_hex_to_int(char *hex_info)
 
 void cdr_set_led_state(int type)
 {
-	/* 状态灯未变化，避免重复设置 */
-	if (g_led_state.state == type)
-	{
-		return;
-	}	
-	cdr_diag_log(CDR_LOG_INFO, "cdr_set_led_state led change, old=0x%x, new=0x%x", g_led_state.state, type);
-	
-	/* 设置状态灯 */
-	memset(&g_led_state, 0, sizeof(g_led_state));
-    g_led_state.state = type;	
-	switch (type)
-	{
-		/* 红灯常亮 */
-		case CDR_LED_RED_CONTINUOUS : 
-		sprintf(g_led_state.set_red, "1");
-		sprintf(g_led_state.set_green, "0");
-		sprintf(g_led_state.set_yellow, "0");
-		g_led_state.is_flash = 0;
-		break;
-		
-		/* 红灯闪烁 */
-		case CDR_LED_RED_FLASH :
-		sprintf(g_led_state.set_red, "1");
-		sprintf(g_led_state.set_green, "0");
-		sprintf(g_led_state.set_yellow, "0");
-		g_led_state.is_flash = 1;
-		break;
-		
-		/* 黄灯常亮 */
-		case CDR_LED_YELLOW_CONTINUOUS :
-		sprintf(g_led_state.set_red, "0");
-		sprintf(g_led_state.set_green, "0");
-		sprintf(g_led_state.set_yellow, "1");
-		g_led_state.is_flash = 0;
-		break;
-		
-		/* 黄灯闪烁 */
-		case CDR_LED_YELLOW_FLASH :
-		sprintf(g_led_state.set_red, "0");
-		sprintf(g_led_state.set_green, "0");
-		sprintf(g_led_state.set_yellow, "1");
-		g_led_state.is_flash = 1;
-		break;
-		
-		/* 绿灯闪烁 */
-		case CDR_LED_GREEN_FLASH :
-		sprintf(g_led_state.set_red, "0");
-		sprintf(g_led_state.set_green, "1");
-		sprintf(g_led_state.set_yellow, "0");
-		g_led_state.is_flash = 1;
-		break;
-		
-		/* 绿灯常亮 */
-		case CDR_LED_GREEN_CONTINUOUS :
-		sprintf(g_led_state.set_red, "0");
-		sprintf(g_led_state.set_green, "1");
-		sprintf(g_led_state.set_yellow, "0");
-		g_led_state.is_flash = 0;
-		break;
-				
-		default :
-		break;
-	}    
+    /* 状态灯未变化，避免重复设置 */
+    if (g_led_state.state == type)
+    {
+        return;
+    }    
+    cdr_diag_log(CDR_LOG_INFO, "cdr_set_led_state led change, old=0x%x, new=0x%x", g_led_state.state, type);
+    
+    /* 设置状态灯 */
+    memset(&g_led_state, 0, sizeof(g_led_state));
+    g_led_state.state = type;    
+    switch (type)
+    {
+        /* 红灯常亮 */
+        case CDR_LED_RED_CONTINUOUS : 
+        sprintf(g_led_state.set_red, "1");
+        sprintf(g_led_state.set_green, "0");
+        sprintf(g_led_state.set_yellow, "0");
+        g_led_state.is_flash = 0;
+        break;
+        
+        /* 红灯闪烁 */
+        case CDR_LED_RED_FLASH :
+        sprintf(g_led_state.set_red, "1");
+        sprintf(g_led_state.set_green, "0");
+        sprintf(g_led_state.set_yellow, "0");
+        g_led_state.is_flash = 1;
+        break;
+        
+        /* 黄灯常亮 */
+        case CDR_LED_YELLOW_CONTINUOUS :
+        sprintf(g_led_state.set_red, "0");
+        sprintf(g_led_state.set_green, "0");
+        sprintf(g_led_state.set_yellow, "1");
+        g_led_state.is_flash = 0;
+        break;
+        
+        /* 黄灯闪烁 */
+        case CDR_LED_YELLOW_FLASH :
+        sprintf(g_led_state.set_red, "0");
+        sprintf(g_led_state.set_green, "0");
+        sprintf(g_led_state.set_yellow, "1");
+        g_led_state.is_flash = 1;
+        break;
+        
+        /* 绿灯闪烁 */
+        case CDR_LED_GREEN_FLASH :
+        sprintf(g_led_state.set_red, "0");
+        sprintf(g_led_state.set_green, "1");
+        sprintf(g_led_state.set_yellow, "0");
+        g_led_state.is_flash = 1;
+        break;
+        
+        /* 绿灯常亮 */
+        case CDR_LED_GREEN_CONTINUOUS :
+        sprintf(g_led_state.set_red, "0");
+        sprintf(g_led_state.set_green, "1");
+        sprintf(g_led_state.set_yellow, "0");
+        g_led_state.is_flash = 0;
+        break;
+                
+        default :
+        break;
+    }    
     
     return;
 }
@@ -462,54 +462,54 @@ void cdr_system_reboot()
 
 void cdr_led_control()
 {
-	int fd_red;
-	int fd_green;
-	int fd_yellow;
+    int fd_red;
+    int fd_green;
+    int fd_yellow;
 
-	cdr_diag_log(CDR_LOG_INFO, "cdr_led_control >>>>>>>>>>>>>>>>>>>>>>>>>>in");
-	
-	/* 打开文件进行操作，控制led状态 */
-	fd_red    = open("/sys/class/gpio/gpio49/value", O_RDWR);
-	if (fd_red < 0)
-	{
-		cdr_diag_log(CDR_LOG_ERROR, "cdr_led_control open gpio value error red %d", fd_red);
-		return;
-	}	
-	fd_green  = open("/sys/class/gpio/gpio50/value", O_RDWR);
-	if (fd_green < 0)
-	{
-		cdr_diag_log(CDR_LOG_ERROR, "cdr_led_control open gpio value error green %d", fd_green);
-		close(fd_red);
-		return;
-	}	
-	fd_yellow = open("/sys/class/gpio/gpio102/value", O_RDWR);
-	if (fd_yellow < 0)
-	{
-		cdr_diag_log(CDR_LOG_ERROR, "cdr_led_control open gpio value error yellow %d", fd_yellow);
-		close(fd_red);
-		close(fd_yellow);
-		return;
-	}	
-	
+    cdr_diag_log(CDR_LOG_INFO, "cdr_led_control >>>>>>>>>>>>>>>>>>>>>>>>>>in");
+    
+    /* 打开文件进行操作，控制led状态 */
+    fd_red    = open("/sys/class/gpio/gpio49/value", O_RDWR);
+    if (fd_red < 0)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "cdr_led_control open gpio value error red %d", fd_red);
+        return;
+    }    
+    fd_green  = open("/sys/class/gpio/gpio50/value", O_RDWR);
+    if (fd_green < 0)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "cdr_led_control open gpio value error green %d", fd_green);
+        close(fd_red);
+        return;
+    }    
+    fd_yellow = open("/sys/class/gpio/gpio102/value", O_RDWR);
+    if (fd_yellow < 0)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "cdr_led_control open gpio value error yellow %d", fd_yellow);
+        close(fd_red);
+        close(fd_yellow);
+        return;
+    }    
+    
     while (1) 
     {
-		write(fd_red,    g_led_state.set_red,    1);
-		write(fd_green,  g_led_state.set_green,  1);
-		write(fd_yellow, g_led_state.set_yellow, 1);
-		sleep(1);
-		
-		/* 处理闪烁 */
-		if (g_led_state.is_flash)
-		{
-			write(fd_red,    "0", 1);
-			write(fd_green,  "0", 1);
-			write(fd_yellow, "0", 1);
-			sleep(1);			
-		}
-	}
-	
-	close(fd_red);
-	close(fd_green);
-	close(fd_yellow);
-	return;
+        write(fd_red,    g_led_state.set_red,    1);
+        write(fd_green,  g_led_state.set_green,  1);
+        write(fd_yellow, g_led_state.set_yellow, 1);
+        sleep(1);
+        
+        /* 处理闪烁 */
+        if (g_led_state.is_flash)
+        {
+            write(fd_red,    "0", 1);
+            write(fd_green,  "0", 1);
+            write(fd_yellow, "0", 1);
+            sleep(1);            
+        }
+    }
+    
+    close(fd_red);
+    close(fd_green);
+    close(fd_yellow);
+    return;
 }
