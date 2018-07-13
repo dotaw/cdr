@@ -122,7 +122,7 @@ void cdr_global_init()
     g_user_log_no_proc_times = 0;
     g_pthread_record_data_active = 0;
     g_pthread_data_to_mysql_active = 0;
-    g_time_calibration_invalid = 0；
+    g_time_calibration_invalid = 0;
     memset(&g_led_state, 0, sizeof(g_led_state));
     memset(&g_dev_run_time, 0, sizeof(g_dev_run_time));
     memset(g_system_event_occur, 0, sizeof(g_system_event_occur));
