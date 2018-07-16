@@ -575,10 +575,10 @@ void cdr_dev_running_time_proc()
             g_dev_run_time.is_update[g_dev_run_time.num - 1] = 0;
             g_dev_run_time.add_id[g_dev_run_time.num - 1] = 0;
             g_dev_run_time.sa[g_dev_run_time.num - 1] = 0;
-            memcpy(g_dev_run_time.power_on_time[g_dev_run_time.num - 1]            ,0, 28 * sizeof(char));
-            memcpy(g_dev_run_time.calibration_before_time[g_dev_run_time.num - 1]  ,0, 28 * sizeof(char));
-            memcpy(g_dev_run_time.calibration_after_time[g_dev_run_time.num - 1]   ,0, 28 * sizeof(char));
-            memcpy(g_dev_run_time.power_off_time[g_dev_run_time.num - 1]           ,0, 28 * sizeof(char));
+            memset(g_dev_run_time.power_on_time[g_dev_run_time.num - 1]            ,0, 28 * sizeof(char));
+            memset(g_dev_run_time.calibration_before_time[g_dev_run_time.num - 1]  ,0, 28 * sizeof(char));
+            memset(g_dev_run_time.calibration_after_time[g_dev_run_time.num - 1]   ,0, 28 * sizeof(char));
+            memset(g_dev_run_time.power_off_time[g_dev_run_time.num - 1]           ,0, 28 * sizeof(char));
             
             /* 全局变量递减 */
             i--;
