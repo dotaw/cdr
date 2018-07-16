@@ -362,7 +362,7 @@ void cdr_simtest_heart_data_proc(cdr_can_frame_t *data)
     fclose(fp_tmp);
     
     remove("/opt/myapp/test/heart_data_sim");
-    rename("/opt/myapp/test/heart_data_sim_temp", "/opt/myapp/test/heart_data_sim");    
+    rename("/opt/myapp/test/heart_data_sim_temp", "/opt/myapp/test/heart_data_sim");
     return;    
 }
 
@@ -501,6 +501,7 @@ void cdr_time_calibration_proc(cdr_can_frame_t *data)
 {
     char time_info[50] = {0};
     int year, mon, day, hour, min, sec, usec;
+    int i;
     
     g_dev_time_calibration_busy = 1;
     
@@ -520,14 +521,17 @@ void cdr_time_calibration_proc(cdr_can_frame_t *data)
         }
     }    
     
-    memset(&g_dev_run_time, 0, sizeof(g_dev_run_time)); /* 所有的时间重新开始 */
+    for (i = 0; i < g_dev_run_time.num; i++)
+    {
+        cdr_get_system_time(CDR_TIME_S, g_dev_run_time.calibration_before_time[i]);
+        sprintf(g_dev_run_time.calibration_after_time[i], "%u-%02u-%02u %02u:%02u:%02u", year + 1900, mon, day, hour, min, sec);
+    }
     
     memset(time_info, 0, sizeof(time_info));
     sprintf(time_info, "date %04u.%02u.%02u-%02u:%02u:%02u", year + 1900, mon, day, hour, min, sec);
     system(time_info);
     system("hwclock -w"); /* 同步到硬件时钟 */
 
-    cdr_get_system_time(CDR_TIME_S, g_dev_run_time.power_on_time[0]); /* 记录记录仪开始时间 */
     cdr_diag_log(CDR_LOG_INFO, "cdr_time_calibration_proc set time %u-%02u-%02u %02u:%02u:%02u.%03u", 
         year + 1900, mon, day, hour, min, sec, usec);
     
@@ -562,8 +566,21 @@ void cdr_dev_running_time_proc()
                 g_dev_run_time.add_id[j]    = g_dev_run_time.add_id[j + 1];
                 g_dev_run_time.sa[j]        = g_dev_run_time.sa[j + 1];
                 memcpy(g_dev_run_time.power_on_time[j], g_dev_run_time.power_on_time[j + 1], 28 * sizeof(char));
+                memcpy(g_dev_run_time.calibration_before_time[j], g_dev_run_time.calibration_before_time[j + 1], 28 * sizeof(char));
+                memcpy(g_dev_run_time.calibration_after_time[j], g_dev_run_time.calibration_after_time[j + 1], 28 * sizeof(char));
                 memcpy(g_dev_run_time.power_off_time[j], g_dev_run_time.power_off_time[j + 1], 28 * sizeof(char));                
             }
+            
+            /* 最后一个单元清空 */
+            g_dev_run_time.is_update[g_dev_run_time.num - 1] = 0;
+            g_dev_run_time.add_id[g_dev_run_time.num - 1] = 0;
+            g_dev_run_time.sa[g_dev_run_time.num - 1] = 0;
+            memcpy(g_dev_run_time.power_on_time[g_dev_run_time.num - 1]            ,0, 28 * sizeof(char));
+            memcpy(g_dev_run_time.calibration_before_time[g_dev_run_time.num - 1]  ,0, 28 * sizeof(char));
+            memcpy(g_dev_run_time.calibration_after_time[g_dev_run_time.num - 1]   ,0, 28 * sizeof(char));
+            memcpy(g_dev_run_time.power_off_time[g_dev_run_time.num - 1]           ,0, 28 * sizeof(char));
+            
+            /* 全局变量递减 */
             i--;
             g_dev_run_time.num--;
         }

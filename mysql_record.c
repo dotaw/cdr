@@ -518,12 +518,23 @@ void cdr_global_data_to_mysql()
             continue;
         }
         
-        sprintf(table_info, "(SA, PowerOn_Time, PowerOff_Time) VALUES('%x', '%s', '%s');", 
-            dev_run_time.sa[i], dev_run_time.power_on_time[i], dev_run_time.power_off_time[i]);
         
         /* 第一次记录时间 */
         if (dev_run_time.add_id[i] == 0)
         {
+            /* 区分校准时间前和校准时间后两种情况 */
+            memset(table_info, 0 , sizeof(table_info));
+            if ((dev_run_time.calibration_before_time[i][0] == 0) || (dev_run_time.calibration_after_time[i][0] == 0))
+            {
+                sprintf(table_info, "(SA, PowerOn_Time, PowerOff_Time) VALUES('%x', '%s', '%s');", 
+                    dev_run_time.sa[i], dev_run_time.power_on_time[i], dev_run_time.power_off_time[i]);
+            }
+            else
+            {
+                sprintf(table_info, "(SA, PowerOn_Time, Calibration_Before_Time, Calibration_After_Time, PowerOff_Time) VALUES('%x', '%s', '%s', '%s', '%s');", 
+                    dev_run_time.sa[i], dev_run_time.power_on_time[i], dev_run_time.calibration_before_time[i], dev_run_time.calibration_after_time[i], dev_run_time.power_off_time[i]);
+            }
+            
             if (mysql_insert_info_to_table(CDR_DATA_TABLE_RUN_TIME, table_info) != CDR_OK)
             {
                 cdr_diag_log(CDR_LOG_ERROR, "cdr_global_data_to_mysql mysql_insert_info_to_table fail, info:%s", table_info);
@@ -532,10 +543,20 @@ void cdr_global_data_to_mysql()
             g_dev_run_time.add_id[i] = cdr_get_run_time_insert_id(dev_run_time.sa[i], dev_run_time.power_on_time[i], dev_run_time.power_off_time[i]);
         }
         
-        /* 更新运行时间 */
+        /* 更新运行时间sql语句区分校准时间前和校准时间后两种情况 */
         memset(table_info, 0 , sizeof(table_info));
-        sprintf(table_info, "UPDATE %s SET PowerOff_Time='%s', Running = TIMESTAMPDIFF(SECOND, PowerOn_Time, PowerOff_Time) WHERE Serial=%u;", 
-            CDR_DATA_TABLE_RUN_TIME, dev_run_time.power_off_time[i], dev_run_time.add_id[i]);
+        if ((dev_run_time.calibration_before_time[i][0] == 0) || (dev_run_time.calibration_after_time[i][0] == 0))
+        {
+            sprintf(table_info, "UPDATE %s SET PowerOff_Time='%s', Running = TIMESTAMPDIFF(SECOND, PowerOn_Time, PowerOff_Time) WHERE Serial=%u;", 
+                CDR_DATA_TABLE_RUN_TIME, dev_run_time.power_off_time[i], dev_run_time.add_id[i]);
+        }
+        else
+        {
+            sprintf(table_info, "UPDATE %s SET PowerOff_Time='%s', Running = (TIMESTAMPDIFF(SECOND, PowerOn_Time, PowerOff_Time) - TIMESTAMPDIFF(SECOND, Calibration_Before_Time, Calibration_After_Time)) WHERE Serial=%u;", 
+                CDR_DATA_TABLE_RUN_TIME, dev_run_time.power_off_time[i], dev_run_time.add_id[i]);
+        }
+        
+        /* 更新运行时间 */
         if (mysql_query(g_mysql_conn, table_info) != 0)
         {
             cdr_diag_log(CDR_LOG_ERROR, "cdr_global_data_to_mysql update running time fail info:%s , err:%s", table_info, mysql_error(g_mysql_conn));

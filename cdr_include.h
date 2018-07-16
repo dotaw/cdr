@@ -76,7 +76,7 @@
 "(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, PF VARCHAR(2), Time VARCHAR(23), Priority VARCHAR(2), Rsv VARCHAR(2), PSorDA VARCHAR(2), SA VARCHAR(2), Data VARCHAR(16), Data_Len  VARCHAR(2))"
 
 #define CDR_DATA_TABLE_HEAD_RUNTIME   \
-"(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, SA VARCHAR(2), PowerOn_Time DATETIME, PowerOff_Time DATETIME, Running INT(11))"
+"(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, SA VARCHAR(2), PowerOn_Time DATETIME, Calibration_Before_Time DATETIME, Calibration_After_Time DATETIME, PowerOff_Time DATETIME, Running INT(11))"
 
 #define CDR_DATA_TABLE_HEAD_USER_LOG  \
 "(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Time VARCHAR(23), Event_Type VARCHAR(2), Result VARCHAR(5))"
@@ -146,12 +146,14 @@ typedef struct cdr_can_frame {
 } cdr_can_frame_t;
 
 typedef struct cdr_dev_run_time {
-    int num;                                               /* 当前记录到设备运行总数 */                                 
-    int is_update[CDR_DEV_RUNTIME_MAX_NUM];                /* 是否需要更新设备的运行时间*/
-    int add_id[CDR_DEV_RUNTIME_MAX_NUM];                   /* 设备运行时间记录在数据库中的位置 */
-    int sa[CDR_DEV_RUNTIME_MAX_NUM];                       /* 当前设备的sa标识 */
-    char power_on_time[CDR_DEV_RUNTIME_MAX_NUM][28];       /* 当前设备的上电时间 */
-    char power_off_time[CDR_DEV_RUNTIME_MAX_NUM][28];      /* 当前设备的下电时间 */
+    int num;                                                      /* 当前记录到设备运行总数 */
+    int is_update[CDR_DEV_RUNTIME_MAX_NUM];                       /* 是否需要更新设备的运行时间*/
+    int add_id[CDR_DEV_RUNTIME_MAX_NUM];                          /* 设备运行时间记录在数据库中的位置 */
+    int sa[CDR_DEV_RUNTIME_MAX_NUM];                              /* 当前设备的sa标识 */
+    char power_on_time[CDR_DEV_RUNTIME_MAX_NUM][28];              /* 当前设备的上电时间 */
+    char calibration_before_time[CDR_DEV_RUNTIME_MAX_NUM][28];    /* 当前设备校准前的时间 */
+    char calibration_after_time[CDR_DEV_RUNTIME_MAX_NUM][28];     /* 当前设备校准后的时间 */
+    char power_off_time[CDR_DEV_RUNTIME_MAX_NUM][28];             /* 当前设备的下电时间 */
 } cdr_dev_run_time_t;
 
 typedef struct cdr_led_set_state {
