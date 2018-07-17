@@ -27,8 +27,15 @@ int mysql_create_table()
     
     for (i = 0; i < (sizeof(table_info) / sizeof(table_info[0])); i++)
     {
-        memset(query_info, 0, sizeof(query_info));
-        sprintf(query_info,"CREATE TABLE IF NOT EXISTS %s %s;", table_info[i][0], table_info[i][1]);
+        memset(query_info, 0, sizeof(query_info));        
+        if (strcmp(table_info[i][0], CDR_DATA_TABLE_EVENT_TYPE) == 0) /* 特殊：支持中文字符 */
+        {
+            sprintf(query_info,"CREATE TABLE IF NOT EXISTS %s %s  default charset=utf8;", table_info[i][0], table_info[i][1]);
+        }
+        else
+        {
+            sprintf(query_info,"CREATE TABLE IF NOT EXISTS %s %s;", table_info[i][0], table_info[i][1]);
+        }
         if (mysql_query(g_mysql_conn, query_info) != 0) /* 创建表格 */
         {
             cdr_diag_log(CDR_LOG_ERROR, "mysql_create_table fail, err:%s", mysql_error(g_mysql_conn));
@@ -197,15 +204,16 @@ int mysql_init_table()
     int i;
     char *event_type_info[] = 
     {
-        "CAN interface initialization",
-        "MySQL database initialization",
-        "Data record self-test initialization",
-        "Thread initialization",
-        "Data record, can-data to file",
-        "Data storage, file to mysql",
-        "Hard disk free size < 20%",
-        "Hard disk free size < 10%",
-        "Hard disk free size < 2%",
+        "CAN接口初始化; CAN interface initialization",
+        "Mysql数据库初始化; MySQL database initialization",
+        "数据记录存储启动自检; Data record self-test initialization",
+        "线程初始化; Thread initialization",
+        "数据记录,CAN数据到文本; Data record, can-data to file",
+        "数据存储,文本到Mysql数据库; Data storage, file to mysql",
+        "硬盘可用空间不足20%; Hard disk free size < 20%",
+        "硬盘可用空间不足10%; Hard disk free size < 10%",
+        "硬盘可用空间不足2%; Hard disk free size < 2%",
+        "记录仪时间校准; recorder time calibration",
     };
     char info[200] = {0};
     

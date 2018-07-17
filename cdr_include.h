@@ -82,7 +82,7 @@
 "(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Time VARCHAR(23), Event_Type VARCHAR(2), Result VARCHAR(5))"
 
 #define CDR_DATA_TABLE_HEAD_EVENT_TYPE  \
-"(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Event_Type VARCHAR(1), Event VARCHAR(30))"
+"(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Event_Type VARCHAR(2), Event VARCHAR(300))"
 
 #define CDR_DATA_TABLE_HEAD_SELF_TEST  \
 "(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Data_Value INT(11))"
@@ -127,6 +127,7 @@ typedef enum cdr_user_log_type {
     CDR_USR_LOG_TYPE_STORAGE_WARNING,           /* 用户日志事件类型：7、存储空间不足提示 */
     CDR_USR_LOG_TYPE_STORAGE_ALARM,             /* 用户日志事件类型：8、存储空间不足告警 */
     CDR_USR_LOG_TYPE_STORAGE_NULL,              /* 用户日志事件类型：9、存储空间不足 */
+    CDR_USR_LOG_TYPE_TIME_CALIBRATION,          /* 用户日志事件类型：10、时间校准 */
 } cdr_user_log_type_t;
 
 typedef enum cdr_event {  

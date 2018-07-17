@@ -534,6 +534,7 @@ void cdr_time_calibration_proc(cdr_can_frame_t *data)
 
     cdr_diag_log(CDR_LOG_INFO, "cdr_time_calibration_proc set time %u-%02u-%02u %02u:%02u:%02u.%03u", 
         year + 1900, mon, day, hour, min, sec, usec);
+    cdr_user_log(CDR_USR_LOG_TYPE_TIME_CALIBRATION, CDR_OK);
     
     g_dev_time_calibration_busy = 0;
     return;
