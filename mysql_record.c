@@ -213,7 +213,7 @@ int mysql_init_table()
         "硬盘可用空间不足20%; Hard disk free size < 20%",
         "硬盘可用空间不足10%; Hard disk free size < 10%",
         "硬盘可用空间不足2%; Hard disk free size < 2%",
-        "记录仪时间校准; recorder time calibration",
+        "校准记录仪时间; recorder time calibration",
     };
     char info[200] = {0};
     
@@ -221,6 +221,7 @@ int mysql_init_table()
     for (i = 0; i < (sizeof(event_type_info) / sizeof(event_type_info[0])); i++)
     {
         memset(info, 0, sizeof(info));
+        mysql_set_character_set(g_mysql_conn, "utf8");
         sprintf(info, "(Event_Type, Event) VALUES(%u, '%s')", i + 1, event_type_info[i]);
         if (mysql_insert_info_to_table(CDR_DATA_TABLE_EVENT_TYPE, info) != CDR_OK)
         {  
@@ -549,6 +550,7 @@ void cdr_global_data_to_mysql()
                 continue;
             }
             g_dev_run_time.add_id[i] = cdr_get_run_time_insert_id(dev_run_time.sa[i], dev_run_time.power_on_time[i], dev_run_time.power_off_time[i]);
+            dev_run_time.add_id[i] = g_dev_run_time.add_id[i];
         }
         
         /* 更新运行时间sql语句区分校准时间前和校准时间后两种情况 */
@@ -560,11 +562,10 @@ void cdr_global_data_to_mysql()
         }
         else
         {
-            sprintf(table_info, "UPDATE %s SET PowerOff_Time='%s', Running = (TIMESTAMPDIFF(SECOND, PowerOn_Time, PowerOff_Time) - TIMESTAMPDIFF(SECOND, Calibration_Before_Time, Calibration_After_Time)) WHERE Serial=%u;", 
-                CDR_DATA_TABLE_RUN_TIME, dev_run_time.power_off_time[i], dev_run_time.add_id[i]);
+            sprintf(table_info, "UPDATE %s SET PowerOff_Time='%s', Calibration_Before_Time='%s', Calibration_After_Time='%s', "
+                "Running = (TIMESTAMPDIFF(SECOND, PowerOn_Time, PowerOff_Time) - TIMESTAMPDIFF(SECOND, Calibration_Before_Time, Calibration_After_Time)) WHERE Serial=%u;", 
+                CDR_DATA_TABLE_RUN_TIME, dev_run_time.power_off_time[i], dev_run_time.calibration_before_time[i], dev_run_time.calibration_after_time[i], dev_run_time.add_id[i]);
         }
-        
-        /* 更新运行时间 */
         if (mysql_query(g_mysql_conn, table_info) != 0)
         {
             cdr_diag_log(CDR_LOG_ERROR, "cdr_global_data_to_mysql update running time fail info:%s , err:%s", table_info, mysql_error(g_mysql_conn));
@@ -573,7 +574,7 @@ void cdr_global_data_to_mysql()
         
         g_dev_run_time.is_update[i] = 0;
         cdr_diag_log(CDR_LOG_DEBUG, "cdr_global_data_to_mysql ok, id:%u, sa:%x, on:%s, off:%s", 
-            g_dev_run_time.add_id[i], dev_run_time.sa[i], dev_run_time.power_on_time[i], dev_run_time.power_off_time[i]);
+            dev_run_time.add_id[i], dev_run_time.sa[i], dev_run_time.power_on_time[i], dev_run_time.power_off_time[i]);
     }
     
     g_dev_run_time_record_busy = 0;

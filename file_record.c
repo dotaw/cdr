@@ -647,7 +647,6 @@ void cdr_can_data_proc(cdr_can_frame_t *data)
     {
         cdr_time_calibration_proc(data);
         g_time_calibration_invalid = 1;
-        return;
     }
 
     cdr_write_can_data_to_file(data);    
