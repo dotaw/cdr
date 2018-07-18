@@ -505,6 +505,7 @@ void cdr_time_calibration_proc(cdr_can_frame_t *data)
     
     g_dev_time_calibration_busy = 1;
     
+    /* 解析时间 */
     usec  =  (data->data & 0xffff);
     sec   =  (data->data >> 16) & 0xff;
     min   = (data->data >> 24) & 0xff;
@@ -521,20 +522,28 @@ void cdr_time_calibration_proc(cdr_can_frame_t *data)
         }
     }    
     
+    /* 记录校准前的时间 */
     for (i = 0; i < g_dev_run_time.num; i++)
     {
         cdr_get_system_time(CDR_TIME_S, g_dev_run_time.calibration_before_time[i]);
-        sprintf(g_dev_run_time.calibration_after_time[i], "%u-%02u-%02u %02u:%02u:%02u", year + 1900, mon, day, hour, min, sec);
     }
     
+    /* 时间校准 */
     memset(time_info, 0, sizeof(time_info));
     sprintf(time_info, "date %04u.%02u.%02u-%02u:%02u:%02u", year + 1900, mon, day, hour, min, sec);
     system(time_info);
     system("hwclock -w"); /* 同步到硬件时钟 */
+    
+    /* 记录校准后的时间 */
+    for (i = 0; i < g_dev_run_time.num; i++)
+    {
+        cdr_get_system_time(CDR_TIME_S, g_dev_run_time.calibration_after_time[i]);
+    }
 
     cdr_diag_log(CDR_LOG_INFO, "cdr_time_calibration_proc set time %u-%02u-%02u %02u:%02u:%02u.%03u", 
         year + 1900, mon, day, hour, min, sec, usec);
     cdr_user_log(CDR_USR_LOG_TYPE_TIME_CALIBRATION, CDR_OK);
+    
     
     g_dev_time_calibration_busy = 0;
     return;
