@@ -185,7 +185,7 @@ int mysql_insert_pf_data_to_table(char *data)
     {
         sprintf(table_name, "%s", CDR_DATA_TABLE_PF41);
     }
-    else if (pf == 41)
+    else if (pf == 42)
     {
         sprintf(table_name, "%s", CDR_DATA_TABLE_PF42);
     }
