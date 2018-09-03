@@ -71,6 +71,7 @@ void cdr_fmea_set_led_state(int led_state)
         /* 优先级排列，越前面，优先级别越高 */
         CDR_LED_RED_CONTINUOUS, 
         CDR_LED_RED_FLASH, 
+        CDR_LED_ORANGE_FLASH,
         CDR_LED_YELLOW_CONTINUOUS, 
         CDR_LED_YELLOW_FLASH,
         CDR_LED_GREEN_FLASH, 
@@ -109,6 +110,7 @@ void cdr_fmea_system_event_led_proc()
         {CDR_EVENT_STORAGE_WARNING,        CDR_LED_YELLOW_FLASH},
         {CDR_EVENT_DATA_RECORDING,         CDR_LED_GREEN_FLASH},
         {CDR_EVENT_STORAGE_NULL,           CDR_LED_RED_FLASH},
+        {CDR_EVENT_BATTERY_NO_POWER,       CDR_LED_ORANGE_FLASH},
     };
     
     for (i = 0; i < CDR_EVENT_MAX - CDR_EVENT_FILE_RECORD_FAULT; i++)
@@ -205,9 +207,29 @@ void cdr_fmea_fault_sim_proc()
     return;
 }
 
+/* 用于判断电池是否有电，时间异常的时候报警 */
+void cdr_fmea_check_time_is_normal()
+{
+    char time_info[30] = {0};
+    
+    cdr_get_system_time(CDR_TIME_S, time_info);
+    
+    if (strcmp(time_info, "2018") < 0)
+    {
+        g_system_event_occur[CDR_EVENT_BATTERY_NO_POWER] = 1;
+    }
+    else
+    {
+        g_system_event_occur[CDR_EVENT_BATTERY_NO_POWER] = 0;
+    }
+    
+    return;
+}
+
 /* 1s定时器 */
 void cdr_fmea_1s_timer()
 {
+    cdr_fmea_check_time_is_normal();
     cdr_fmea_disk_free_size();    
     cdr_fmea_fault_sim_proc();    
     cdr_fmea_system_event_led_proc();

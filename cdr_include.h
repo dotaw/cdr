@@ -49,7 +49,7 @@
 #define CDR_STORAGE_ALARM_THRESHOLD      10    /* 硬盘空间剩余10%告警，部分数据覆盖存储 */
 #define CDR_STORAGE_NULL_THRESHOLD       2     /* 硬盘空间剩余2%告警，所有的数据都要覆盖存储 */
 
-#define CDR_DEV_RUNNING_TIME_THRESHOLD   10    /* 超过门限没有坚持到设备心跳，认为设备关机，单位秒 */
+#define CDR_DEV_RUNNING_TIME_THRESHOLD   6    /* 超过门限没有坚持到设备心跳，认为设备关机，单位秒 */
 
 #define CDR_ID_TO_PRIORITY(id)     (((id) >> 26) & 0x7)    /* 根据CAN ID解析PRIORITY */
 #define CDR_ID_TO_RSV(id)          (((id) >> 24) & 0x3)    /* 根据CAN ID解析RSV */
@@ -115,6 +115,7 @@ typedef enum cdr_led_state {
     CDR_LED_YELLOW_FLASH        = 0x8,        /* 黄灯闪烁 */
     CDR_LED_GREEN_FLASH         = 0x10,       /* 绿灯闪烁 */
     CDR_LED_GREEN_CONTINUOUS    = 0x20,       /* 绿灯常亮 */    
+    CDR_LED_ORANGE_FLASH        = 0x40,       /* 橙灯闪烁 */
 } cdr_led_state_t;
 
 typedef enum cdr_user_log_type {  
@@ -137,6 +138,7 @@ typedef enum cdr_event {
     CDR_EVENT_STORAGE_ALARM,                                             /* 8、存储空间不足告警事件 */
     CDR_EVENT_STORAGE_NULL,                                              /* 9、存储空间不足事件 */
     CDR_EVENT_DATA_RECORDING,                                            /* 10、数据正常存储事件 */
+    CDR_EVENT_BATTERY_NO_POWER,                                          /* 11、电池没电了 */
     CDR_EVENT_MAX,
 } cdr_event_t;
 

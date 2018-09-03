@@ -110,6 +110,7 @@ void cdr_global_init()
         CDR_FILE_DIR_CAN_BF,
     };
     int i;
+    DIR *dir;
     
     /* 全局变量初始化 */
     g_socket_fd = 0;
@@ -133,13 +134,18 @@ void cdr_global_init()
     /* 目录不存在，创建目录 */
     for (i = 0; i < sizeof(directory)/sizeof(directory[0]); i++)
     {
-        if (opendir(directory[i]) == NULL)
+        dir = opendir(directory[i]);
+        if (dir == NULL)
         {
             if (mkdir(directory[i], 0777) < 0);
             {
                 printf("mkdir %s, errno=%d\n",directory[i],errno);
                 printf("Mesg:%s\n",strerror(errno));
             }
+        }
+        else
+        {
+            closedir(dir);
         }
     }    
     

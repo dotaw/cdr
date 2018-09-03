@@ -445,6 +445,14 @@ void cdr_set_led_state(int type)
         g_led_state.is_flash = 0;
         break;
                 
+        /* 橙灯闪烁 */
+        case CDR_LED_ORANGE_FLASH :
+        sprintf(g_led_state.set_red, "1");
+        sprintf(g_led_state.set_green, "0");
+        sprintf(g_led_state.set_yellow, "1");
+        g_led_state.is_flash = 1;
+        break;
+        
         default :
         break;
     }    
@@ -504,7 +512,7 @@ void cdr_led_control()
             write(fd_red,    "0", 1);
             write(fd_green,  "0", 1);
             write(fd_yellow, "0", 1);
-            sleep(1);            
+            usleep(300000); //延迟0.3s
         }
     }
     
