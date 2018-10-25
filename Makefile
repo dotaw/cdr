@@ -19,7 +19,7 @@ SRC = cdr_main.c \
       mysql_record.c \
       file_record.c \
       cdr_public.c \
-	  cdr_fmea.c
+      cdr_fmea.c
 
 # 源文件编译为目标文件  
 OBJS = $(SRC:.c=.o)  
