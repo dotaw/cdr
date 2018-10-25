@@ -464,7 +464,14 @@ void cdr_set_led_state(int type)
 void cdr_system_reboot()
 {
     cdr_diag_log(CDR_LOG_INFO, "cdr_system_reboot now==============================");
-    //reboot(RB_AUTOBOOT);
+    
+    /* 调试不复位 */
+    if (CDR_DEBUG_INVALID == 0)
+    {
+        return;
+    }
+    
+    reboot(RB_AUTOBOOT);
     return;
 }
 

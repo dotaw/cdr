@@ -329,7 +329,13 @@ int cdr_main_init_watch_dog()
 {
     int i;
     int timeout;
-return 0;
+    
+    /* 调试不打开看门狗 */
+    if (CDR_DEBUG_INVALID == 0)
+    {
+        return 0;
+    }
+    
     for (i = 0; i < CDR_FAIL_TRY_TIMES; i++)
     {
         g_wdt_fd = open(WDT, O_WRONLY);
