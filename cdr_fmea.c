@@ -214,7 +214,7 @@ void cdr_fmea_check_time_is_normal()
     
     cdr_get_system_time(CDR_TIME_S, time_info);
     
-    if (strcmp(time_info, "2018") < 0)
+    if (strcmp(time_info, "1971") < 0)
     {
         g_system_event_occur[CDR_EVENT_BATTERY_NO_POWER] = 1;
     }
