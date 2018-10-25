@@ -214,6 +214,7 @@ int mysql_init_table()
         "硬盘可用空间不足10%; Hard disk free size < 10%",
         "硬盘可用空间不足2%; Hard disk free size < 2%",
         "校准记录仪时间; recorder time calibration",
+        "记录仪时间异常; recorder time abnormal",
     };
     char info[200] = {0};
     

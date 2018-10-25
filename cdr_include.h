@@ -129,6 +129,7 @@ typedef enum cdr_user_log_type {
     CDR_USR_LOG_TYPE_STORAGE_ALARM,             /* 用户日志事件类型：8、存储空间不足告警 */
     CDR_USR_LOG_TYPE_STORAGE_NULL,              /* 用户日志事件类型：9、存储空间不足 */
     CDR_USR_LOG_TYPE_TIME_CALIBRATION,          /* 用户日志事件类型：10、时间校准 */
+    CDR_USR_LOG_TYPE_TIME_ABNORMAL,             /* 用户日志事件类型：11、时间异常，对应CDR_EVENT_BATTERY_NO_POWER */
 } cdr_user_log_type_t;
 
 typedef enum cdr_event {  
