@@ -40,7 +40,7 @@ void cdr_fmea_disk_free_size()
     {
         g_system_event_occur[CDR_EVENT_STORAGE_NULL] = 1; 
     }    
-    else if (state < CDR_STORAGE_ALARM_THRESHOLD) /* 不足15% */
+    else if (state < CDR_STORAGE_ALARM_THRESHOLD) /* 不足10% */
     {
         g_system_event_occur[CDR_EVENT_STORAGE_NULL] = 0;
         g_system_event_occur[CDR_EVENT_STORAGE_ALARM] = 1;        
@@ -106,11 +106,11 @@ void cdr_fmea_system_event_led_proc()
     {
         {CDR_EVENT_FILE_RECORD_FAULT,      CDR_LED_RED_FLASH},
         {CDR_EVENT_MYSQL_RECORD_FAULT,     CDR_LED_YELLOW_FLASH},
-        {CDR_EVENT_STORAGE_ALARM,          CDR_LED_RED_FLASH},
+        {CDR_EVENT_STORAGE_ALARM,          CDR_LED_ORANGE_FLASH},
         {CDR_EVENT_STORAGE_WARNING,        CDR_LED_YELLOW_FLASH},
         {CDR_EVENT_DATA_RECORDING,         CDR_LED_GREEN_FLASH},
         {CDR_EVENT_STORAGE_NULL,           CDR_LED_RED_FLASH},
-        {CDR_EVENT_BATTERY_NO_POWER,       CDR_LED_ORANGE_FLASH},
+        {CDR_EVENT_BATTERY_NO_POWER,       CDR_LED_YELLOW_CONTINUOUS},
     };
     
     for (i = 0; i < CDR_EVENT_MAX - CDR_EVENT_FILE_RECORD_FAULT; i++)
