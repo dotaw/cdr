@@ -1,0 +1,3 @@
+mysql-last.tar  最终已经建好数据库
+
+mysql-arm-aft-make.tar.gz 编译后之后原始
