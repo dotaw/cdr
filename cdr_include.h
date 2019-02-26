@@ -70,6 +70,7 @@
 #define CDR_DATA_TABLE_USER_LOG       "USER_LOG"      /* 存储用户日志的记录 */
 #define CDR_DATA_TABLE_EVENT_TYPE     "EVENT_TYPE"    /* 存储用户日志中事件类型的说明 */
 #define CDR_DATA_TABLE_SELF_TEST      "SELF_TEST"     /* 临时表格，用户启动自检，启动完后表格删除 */
+#define CDR_DATA_TABLE_NET            "NET_DATA"      /* 存储网口数据 */
 
 /* 不同的表格对应的表头内容 */
 #define CDR_DATA_TABLE_HEAD_PF        \
@@ -86,6 +87,11 @@
 
 #define CDR_DATA_TABLE_HEAD_SELF_TEST  \
 "(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Data_Value INT(11))"
+
+#define CDR_DATA_TABLE_HEAD_NET     \
+"(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Time VARCHAR(23), Send_Dev_Type VARCHAR(4), Send_Dev_Date VARCHAR(2), Send_Dev_Code VARCHAR(4), \
+Receive_Dev_Type VARCHAR(4), Receive_Dev_Date VARCHAR(2), Receive_Dev_Code VARCHAR(4), \
+Data_Len  VARCHAR(4), Instruction VARCHAR(2), Net_Data VARCHAR(100), Data_Check VARCHAR(2))"
 
 #ifndef AF_CAN
 #define AF_CAN 29
@@ -214,6 +220,7 @@ void cdr_record_can_data();
 
 /* mysql_record */
 void cdr_add_data_to_mysql();
+void cdr_add_netdata_to_mysql();
 void cdr_mysql_end();
 
 /* cdr_fmea */

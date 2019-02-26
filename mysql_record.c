@@ -13,7 +13,7 @@ static unsigned int opt_flags = 0;
 /* 创建表格 */
 int mysql_create_table()
 {
-    char query_info[300] = {0};
+    char query_info[500] = {0};
     char *table_info[][2] = 
     {
         {CDR_DATA_TABLE_PF41,        CDR_DATA_TABLE_HEAD_PF},
@@ -22,6 +22,7 @@ int mysql_create_table()
         {CDR_DATA_TABLE_RUN_TIME,    CDR_DATA_TABLE_HEAD_RUNTIME},
         {CDR_DATA_TABLE_USER_LOG,    CDR_DATA_TABLE_HEAD_USER_LOG},
         {CDR_DATA_TABLE_EVENT_TYPE,  CDR_DATA_TABLE_HEAD_EVENT_TYPE},
+        {CDR_DATA_TABLE_NET,         CDR_DATA_TABLE_HEAD_NET},
     };
     int i;
     
@@ -113,6 +114,9 @@ void mysql_table_cover_old_data_proc(char *table_name, char *info, char *table_i
     char buf6[100] = {0};
     char buf7[100] = {0};
     char buf8[100] = {0};
+    char buf9[100] = {0};
+    char buf10[100] = {0};
+    char buf11[100] = {0};
     
     if (strcmp(table_name, CDR_DATA_TABLE_RUN_TIME) == 0)
     {
@@ -126,12 +130,22 @@ void mysql_table_cover_old_data_proc(char *table_name, char *info, char *table_i
         sprintf(table_info, "UPDATE %s SET Time='%s', Event_Type='%s', Result='%s' WHERE Serial=%u;", 
             table_name, buf1, buf2, buf3, cdr_get_table_old_time_id(table_name, "Time"));        
     }
+    else if (strcmp(table_name, CDR_DATA_TABLE_NET) == 0)
+    {
+        sscanf(info, "(Time,Send_Dev_Type,Send_Dev_Date,Send_Dev_Code,Receive_Dev_Type,Receive_Dev_Date,Receive_Dev_Code,Data_Len,Instruction,Net_Data,Data_Check) \
+            VALUES('%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']')", \
+            buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8, buf9, buf10, buf11);
+        sprintf(table_info, "UPDATE %s SET Time='%s', Send_Dev_Type='%s',Send_Dev_Date='%s',Send_Dev_Code='%s', \
+            Receive_Dev_Type='%s',Receive_Dev_Date='%s',Receive_Dev_Code='%s', \
+            Data_Len='%s',Instruction='%s',Net_Data='%s',Data_Check='%s' WHERE Serial=%u;", 
+            table_name, buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8, buf9, buf10, buf11, cdr_get_table_old_time_id(table_name, "Time"));
+    }
     else
     {
         sscanf(info, "(PF,Time,Priority,Rsv,PSorDA,SA,Data,Data_Len) VALUES('%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']')", 
             buf1, buf2, buf3,buf4, buf5, buf6,buf7, buf8);
         sprintf(table_info, "UPDATE %s SET PF='%s', Time='%s', Priority='%s', Rsv='%s', PSorDA='%s', SA='%s', Data='%s', Data_Len='%s' WHERE Serial=%u;", 
-            table_name, buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8, cdr_get_table_old_time_id(table_name, "Time"));                
+            table_name, buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8, cdr_get_table_old_time_id(table_name, "Time"));
     }
     
     return;
@@ -663,3 +677,116 @@ void cdr_add_data_to_mysql()
     return;    
 }
 
+/*------------------以下是记录网口数据的实现-----------------------------*/
+
+#define NDR_LISTEN_PORT       9003
+#define RECV_BUFF_LEN_MAX     100
+#define RECV_BUFF_LEN_MIN     16
+
+
+int mysql_insert_net_data_to_table(char *data)
+{
+    char table_name[20] = {0};
+    char table_info[500] = {0};
+    int pf = atoi(data + 1);
+    
+    sprintf(table_name, "%s", CDR_DATA_TABLE_NET);
+    
+    sprintf(table_info, "(Time,Send_Dev_Type,Send_Dev_Date,Send_Dev_Code,Receive_Dev_Type,Receive_Dev_Date,Receive_Dev_Code,Data_Len,Instruction,Net_Data,Data_Check) VALUES(%s);", data);
+    g_system_event_occur[CDR_EVENT_DATA_RECORDING] = 1;
+    return mysql_insert_info_to_table(table_name, table_info);
+}
+
+void cdr_add_netdata_to_mysql()
+{
+    int i;
+    int server_sock;
+    int recv_len;
+    struct sockaddr_in server_addr;
+    socklen_t sock_len;
+    char buff[RECV_BUFF_LEN_MAX] = {0};
+    char buff_display[RECV_BUFF_LEN_MAX * 2] = {0}; //用于打印接收到的数据
+    int buff_display_int;
+    char data_info[500] = {0};
+    char time_info[30] = {0};
+    int data_len;
+    
+    cdr_diag_log(CDR_LOG_INFO, "cdr_add_netdata_to_mysql >>>>>>>>>>>>>>>>>>>>>>>>>>in");
+    
+    /* 创建socket udp */
+    server_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (server_sock < 0) {
+        cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql creat server_sock error");
+        cdr_system_reboot();
+        return;
+    }
+    cdr_diag_log(CDR_LOG_INFO, "cdr_add_netdata_to_mysql creat server_sock ok");
+    
+    /* 绑定到端口 */
+    sock_len = sizeof(server_addr);
+    (void)memset(&server_addr, 0, sock_len);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr.sin_port = htons(NDR_LISTEN_PORT);
+    if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr))) 
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql bind error");
+        return;
+    }
+    printf("bind ok port %u (%hu)\r\n", NDR_LISTEN_PORT, htons(NDR_LISTEN_PORT));
+    cdr_diag_log(CDR_LOG_INFO, "cdr_add_netdata_to_mysql bind ok port %u (%hu)", NDR_LISTEN_PORT, htons(NDR_LISTEN_PORT));
+        
+    sleep(3); /* 延时3s */    
+    while (1) 
+    {
+        //usleep(200000); //延迟200ms        
+        /* 接收数据 */
+        memset(buff, 0 , sizeof(buff));
+        recv_len = recvfrom(server_sock, buff, sizeof(buff), 0, (struct sockaddr *)&server_addr, &sock_len);
+        
+        buff_display_int = 0;
+        memset(buff_display, 0 , sizeof(buff_display));
+        buff_display_int = sprintf(buff_display, "recv_len=%d, ", recv_len);
+        for (i = 0; i < recv_len; i++)
+        {
+            buff_display_int += sprintf(buff_display + buff_display_int, "%02x", buff[i]);
+        }
+        
+        cdr_diag_log(CDR_LOG_DEBUG, "NET_DATA: %s", buff_display);
+        printf("%s\r\n",buff_display);
+        
+        if (recv_len >= RECV_BUFF_LEN_MAX || recv_len < RECV_BUFF_LEN_MIN)
+        {
+            cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql error data recv_len=%d", recv_len);
+            continue;
+        }
+        
+        if (buff[0] != 0xc0 || buff[recv_len - 1] != 0xc0) //初始位或结束位，错误
+        {
+            cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql error data type recv_len=%d", recv_len);
+            continue;
+        }
+        
+        //数据正常，存入数据库        
+        data_len = recv_len - RECV_BUFF_LEN_MIN;
+        memset(time_info, 0 , sizeof(time_info));
+        memset(data_info, 0 , sizeof(data_info));
+        
+        buff_display_int = 0;
+        memset(buff_display, 0 , sizeof(buff_display));
+        for (i = 0; i < data_len; i++)
+        {
+            buff_display_int += sprintf(buff_display + buff_display_int, "%02x", buff[i + 14]); //数据从14开始
+        }
+        
+        cdr_get_system_time(CDR_TIME_MS, time_info);
+        
+        sprintf(data_info, "'%s', '%02x%02x', '%02x', '%02x%02x', '%02x%02x', '%02x', '%02x%02x', '%02x%02x', '%02x', '%s', '%02x'", \
+                    time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, buff[recv_len - 2]);
+        
+        mysql_insert_net_data_to_table(data_info);
+    }
+    
+    close(server_sock);
+    return;    
+}
