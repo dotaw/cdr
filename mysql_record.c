@@ -132,13 +132,12 @@ void mysql_table_cover_old_data_proc(char *table_name, char *info, char *table_i
     }
     else if (strcmp(table_name, CDR_DATA_TABLE_NET) == 0)
     {
-        sscanf(info, "(Time,Send_Dev_Type,Send_Dev_Date,Send_Dev_Code,Receive_Dev_Type,Receive_Dev_Date,Receive_Dev_Code,Data_Len,Instruction,Net_Data,Data_Check) \
+        sscanf(info, "(Time,Send_No,Receive_No,Data,Token) \
             VALUES('%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']')", \
-            buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8, buf9, buf10, buf11);
-        sprintf(table_info, "UPDATE %s SET Time='%s', Send_Dev_Type='%s',Send_Dev_Date='%s',Send_Dev_Code='%s', \
-            Receive_Dev_Type='%s',Receive_Dev_Date='%s',Receive_Dev_Code='%s', \
-            Data_Len='%s',Instruction='%s',Net_Data='%s',Data_Check='%s' WHERE Serial=%u;", 
-            table_name, buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8, buf9, buf10, buf11, cdr_get_table_old_time_id(table_name, "Time"));
+            buf1, buf2, buf3, buf4, buf5);
+        sprintf(table_info, "UPDATE %s SET Time='%s', Send_No='%s', \
+            Receive_No='%s', Data='%s',Token='%s' WHERE Serial=%u;", 
+            table_name, buf1, buf2, buf3, buf4, buf5, cdr_get_table_old_time_id(table_name, "Time"));
     }
     else
     {
@@ -627,6 +626,28 @@ int cdr_mysql_init()
     }
     cdr_diag_log(CDR_LOG_INFO, "mysql_real_connet ok");
     
+    
+    /* 网口初始化连接处理器 */
+    g_mysql_conn_net = mysql_init(NULL);
+    if (g_mysql_conn_net == NULL)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "mysql_init_net fail");
+        mysql_close(g_mysql_conn);
+        return CDR_ERROR;        
+    }    
+    cdr_diag_log(CDR_LOG_INFO, "mysql_init_net ok");
+    
+    /* 网口连接服务器 */
+    if (mysql_real_connect(g_mysql_conn_net, opt_host_name, opt_user_name, opt_passowrd, opt_db_name, opt_port_num, opt_socket_name, opt_flags) == NULL)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "mysql_real_connet_net fail, mysql_error %s", mysql_error(g_mysql_conn_net));
+        mysql_close(g_mysql_conn);
+        mysql_close(g_mysql_conn_net);        
+        return CDR_ERROR;
+    }
+    cdr_diag_log(CDR_LOG_INFO, "mysql_real_connet_net ok");
+    
+    
     /* 创建需要用到的表格 */
     if (mysql_create_table() != CDR_OK)
     {
@@ -684,17 +705,55 @@ void cdr_add_data_to_mysql()
 #define RECV_BUFF_LEN_MIN     16
 
 
+/* 插入数据到表格 */
+int mysql_insert_netinfo_to_table(char *table_name, char *info)
+{
+    int cover_old_data = 0; /* 硬盘空间不足时 覆盖老数据 */
+    char table_info[500] = {0};
+    
+    /* 两种情况下需要覆盖数据：
+       1、硬盘无空间
+       2、硬盘空间不足告警，并且表格等于PF_ELSE时 */
+    if ((g_system_event_occur[CDR_EVENT_STORAGE_NULL] == 1) 
+        || ((g_system_event_occur[CDR_EVENT_STORAGE_ALARM] == 1) && (strcmp(table_name, CDR_DATA_TABLE_PF_ELSE) == 0)))
+    {
+        /* CDR_DATA_TABLE_EVENT_TYPE初始化的时候创建，不存在覆盖不不覆盖的问题 */
+        if (strcmp(table_name, CDR_DATA_TABLE_EVENT_TYPE) != 0) 
+        {
+            cover_old_data = 1; /* 覆盖 */
+        }
+    }
+    
+    /* 两种情况，1：覆盖老数据；2：直接插入新数据 */
+    if (cover_old_data)
+    {
+        mysql_table_cover_old_data_proc(table_name, info, table_info);
+    }
+    else
+    {
+        sprintf(table_info, "INSERT INTO %s %s", table_name, info);
+    }
+
+    if (mysql_query(g_mysql_conn_net, table_info) != 0)  /* 表格插入数据 */
+    {  
+        cdr_diag_log(CDR_LOG_ERROR, "mysql_insert_netinfo_to_table fail info:%s , err:%s", table_info, mysql_error(g_mysql_conn_net));
+        return CDR_ERROR;
+    }
+    
+    return CDR_OK;
+}
+
+
 int mysql_insert_net_data_to_table(char *data)
 {
     char table_name[20] = {0};
     char table_info[500] = {0};
-    int pf = atoi(data + 1);
     
     sprintf(table_name, "%s", CDR_DATA_TABLE_NET);
     
-    sprintf(table_info, "(Time,Send_Dev_Type,Send_Dev_Date,Send_Dev_Code,Receive_Dev_Type,Receive_Dev_Date,Receive_Dev_Code,Data_Len,Instruction,Net_Data,Data_Check) VALUES(%s);", data);
+    sprintf(table_info, "(Time,Send_No,Receive_No,Data,Token) VALUES(%s);", data);
     g_system_event_occur[CDR_EVENT_DATA_RECORDING] = 1;
-    return mysql_insert_info_to_table(table_name, table_info);
+    return mysql_insert_netinfo_to_table(table_name, table_info);
 }
 
 void cdr_add_netdata_to_mysql()
@@ -769,6 +828,12 @@ void cdr_add_netdata_to_mysql()
         
         //数据正常，存入数据库        
         data_len = recv_len - RECV_BUFF_LEN_MIN;
+        
+        int data_token = 1;
+        if (buff[11] != data_len)
+        {
+            data_token = 0;
+        }
         memset(time_info, 0 , sizeof(time_info));
         memset(data_info, 0 , sizeof(data_info));
         
@@ -781,8 +846,8 @@ void cdr_add_netdata_to_mysql()
         
         cdr_get_system_time(CDR_TIME_MS, time_info);
         
-        sprintf(data_info, "'%s', '%02x%02x', '%02x', '%02x%02x', '%02x%02x', '%02x', '%02x%02x', '%02x%02x', '%02x', '%s', '%02x'", \
-                    time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, buff[recv_len - 2]);
+        sprintf(data_info, "'%s', '%02x%02x%02x%02x%02x', '%02x%02x%02x%02x%02x', '%02x%02x%02x%s', '%x'", \
+                    time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, data_token);
         
         mysql_insert_net_data_to_table(data_info);
     }

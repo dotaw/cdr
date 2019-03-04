@@ -138,7 +138,8 @@ void cdr_global_init()
     memset(g_system_event_occur_his, 0, sizeof(g_system_event_occur_his));
     memset(g_system_event_no_occur_num, 0, sizeof(g_system_event_no_occur_num));
     g_mysql_conn = NULL;
-
+    g_mysql_conn_net = NULL;
+    
     /* 目录不存在，创建目录 */
     for (i = 0; i < sizeof(directory)/sizeof(directory[0]); i++)
     {

@@ -89,9 +89,8 @@
 "(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Data_Value INT(11))"
 
 #define CDR_DATA_TABLE_HEAD_NET     \
-"(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Time VARCHAR(23), Send_Dev_Type VARCHAR(4), Send_Dev_Date VARCHAR(2), Send_Dev_Code VARCHAR(4), \
-Receive_Dev_Type VARCHAR(4), Receive_Dev_Date VARCHAR(2), Receive_Dev_Code VARCHAR(4), \
-Data_Len  VARCHAR(4), Instruction VARCHAR(2), Net_Data VARCHAR(100), Data_Check VARCHAR(2))"
+"(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Time VARCHAR(23), Send_No VARCHAR(10), \
+Rcv_No VARCHAR(10), Data  VARCHAR(100), Token VARCHAR(2))"
 
 #ifndef AF_CAN
 #define AF_CAN 29
@@ -193,6 +192,7 @@ int g_time_calibration_invalid;                   /* 时间校准是否生效，
 cdr_led_set_state_t g_led_state;                  /* LED状态灯当前状态 */
 cdr_dev_run_time_t g_dev_run_time;                /* 设备的运行时间记录 */
 MYSQL *g_mysql_conn;                              /* 代开的数据库id */
+MYSQL *g_mysql_conn_net;                          /* 网口代开的数据库id */
  
 
 /* ---------------------------------------- 函数声明 ---------------------------------------- */
