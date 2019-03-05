@@ -132,12 +132,12 @@ void mysql_table_cover_old_data_proc(char *table_name, char *info, char *table_i
     }
     else if (strcmp(table_name, CDR_DATA_TABLE_NET) == 0)
     {
-        sscanf(info, "(Time,Send_No,Receive_No,Data,Token) \
-            VALUES('%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']')", \
-            buf1, buf2, buf3, buf4, buf5);
+        sscanf(info, "(Time,Send_No,Receive_No,Data_Len,Instruction,Data,Verify,Token) \
+            VALUES('%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']', '%[^']')", \
+            buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8);
         sprintf(table_info, "UPDATE %s SET Time='%s', Send_No='%s', \
-            Receive_No='%s', Data='%s',Token='%s' WHERE Serial=%u;", 
-            table_name, buf1, buf2, buf3, buf4, buf5, cdr_get_table_old_time_id(table_name, "Time"));
+            Receive_No='%s', Data_Len='%s', Instruction='%s',Data='%s', Verify='%s',Token='%s' WHERE Serial=%u;", 
+            table_name, buf1, buf2, buf3, buf4, buf5, buf6, buf7, buf8, cdr_get_table_old_time_id(table_name, "Time"));
     }
     else
     {
@@ -751,7 +751,7 @@ int mysql_insert_net_data_to_table(char *data)
     
     sprintf(table_name, "%s", CDR_DATA_TABLE_NET);
     
-    sprintf(table_info, "(Time,Send_No,Receive_No,Data,Token) VALUES(%s);", data);
+    sprintf(table_info, "(Time,Send_No,Receive_No,Data_Len,Instruction,Data,Verify,Token) VALUES(%s);", data);
     g_system_event_occur[CDR_EVENT_DATA_RECORDING] = 1;
     return mysql_insert_netinfo_to_table(table_name, table_info);
 }
@@ -830,7 +830,7 @@ void cdr_add_netdata_to_mysql()
         data_len = recv_len - RECV_BUFF_LEN_MIN;
         
         int data_token = 1;
-        if (buff[11] != data_len)
+        if (buff[11] != recv_len - 2)
         {
             data_token = 0;
         }
@@ -846,8 +846,8 @@ void cdr_add_netdata_to_mysql()
         
         cdr_get_system_time(CDR_TIME_MS, time_info);
         
-        sprintf(data_info, "'%s', '%02x%02x%02x%02x%02x', '%02x%02x%02x%02x%02x', '%02x%02x%02x%s', '%x'", \
-                    time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, data_token);
+        sprintf(data_info, "'%s', '%02x%02x%02x%02x%02x', '%02x%02x%02x%02x%02x', '%02x%02x', '%02x', '%s', '%x', '%x'", \
+                    time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, buff[recv_len-2],data_token);
         
         mysql_insert_net_data_to_table(data_info);
     }

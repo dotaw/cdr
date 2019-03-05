@@ -90,7 +90,7 @@
 
 #define CDR_DATA_TABLE_HEAD_NET     \
 "(Serial INT(11) PRIMARY KEY AUTO_INCREMENT, Time VARCHAR(23), Send_No VARCHAR(10), \
-Receive_No VARCHAR(10), Data  VARCHAR(100), Token VARCHAR(2))"
+Receive_No VARCHAR(10), Data_Len VARCHAR(4), Instruction VARCHAR(2), Data  VARCHAR(100), Verify VARCHAR(2), Token VARCHAR(2))"
 
 #ifndef AF_CAN
 #define AF_CAN 29
