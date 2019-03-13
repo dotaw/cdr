@@ -647,6 +647,28 @@ int cdr_mysql_init()
     }
     cdr_diag_log(CDR_LOG_INFO, "mysql_real_connet_net ok");
     
+    /* 网口文件初始化连接处理器 */
+    g_mysql_conn_net_file = mysql_init(NULL);
+    if (g_mysql_conn_net_file == NULL)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "mysql_init_net_file fail");
+        mysql_close(g_mysql_conn);
+        mysql_close(g_mysql_conn_net); 
+        return CDR_ERROR;        
+    }    
+    cdr_diag_log(CDR_LOG_INFO, "mysql_init_net_file ok");
+    
+    /* 网口文件连接服务器 */
+    if (mysql_real_connect(g_mysql_conn_net_file, opt_host_name, opt_user_name, opt_passowrd, opt_db_name, opt_port_num, opt_socket_name, opt_flags) == NULL)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "mysql_init_net_file fail, mysql_error %s", mysql_error(g_mysql_conn_net_file));
+        mysql_close(g_mysql_conn);
+        mysql_close(g_mysql_conn_net); 
+        mysql_close(g_mysql_conn_net_file);        
+        return CDR_ERROR;
+    }
+    cdr_diag_log(CDR_LOG_INFO, "mysql_init_net_file ok");
+    
     
     /* 创建需要用到的表格 */
     if (mysql_create_table() != CDR_OK)
@@ -756,6 +778,87 @@ int mysql_insert_net_data_to_table(char *data)
     return mysql_insert_netinfo_to_table(table_name, table_info);
 }
 
+/* 插入数据到表格 */
+int mysql_insert_netfileinfo_to_table(char *table_name, char *info)
+{
+    int cover_old_data = 0; /* 硬盘空间不足时 覆盖老数据 */
+    char table_info[500] = {0};
+    
+    /* 两种情况下需要覆盖数据：
+       1、硬盘无空间
+       2、硬盘空间不足告警，并且表格等于PF_ELSE时 */
+    if ((g_system_event_occur[CDR_EVENT_STORAGE_NULL] == 1) 
+        || ((g_system_event_occur[CDR_EVENT_STORAGE_ALARM] == 1) && (strcmp(table_name, CDR_DATA_TABLE_PF_ELSE) == 0)))
+    {
+        /* CDR_DATA_TABLE_EVENT_TYPE初始化的时候创建，不存在覆盖不不覆盖的问题 */
+        if (strcmp(table_name, CDR_DATA_TABLE_EVENT_TYPE) != 0) 
+        {
+            cover_old_data = 1; /* 覆盖 */
+        }
+    }
+    
+    /* 两种情况，1：覆盖老数据；2：直接插入新数据 */
+    if (cover_old_data)
+    {
+        mysql_table_cover_old_data_proc(table_name, info, table_info);
+    }
+    else
+    {
+        sprintf(table_info, "INSERT INTO %s %s", table_name, info);
+    }
+
+    if (mysql_query(g_mysql_conn_net_file, table_info) != 0)  /* 表格插入数据 */
+    {  
+        cdr_diag_log(CDR_LOG_ERROR, "mysql_insert_netfileinfo_to_table fail info:%s , err:%s", table_info, mysql_error(g_mysql_conn_net));
+        return CDR_ERROR;
+    }
+    
+    return CDR_OK;
+}
+
+
+int mysql_insert_net_filedata_to_table(char *data)
+{
+    char table_name[20] = {0};
+    char table_info[500] = {0};
+    
+    sprintf(table_name, "%s", CDR_DATA_TABLE_NET);
+    
+    sprintf(table_info, "(Time,Send_No,Receive_No,Data_Len,Instruction,Data,Verify,Token) VALUES(%s);", data);
+    g_system_event_occur[CDR_EVENT_DATA_RECORDING] = 1;
+    return mysql_insert_netfileinfo_to_table(table_name, table_info);
+}
+
+void cdr_write_net_data_to_file(char *data)
+{
+    FILE *fp;
+    char time_info[30] = {0};
+    char data_info[20] = {0};
+    
+    while(g_netcache_file_busy)
+    {
+        cdr_diag_log(CDR_LOG_INFO, "cdr_write_net_data_to_file g_netcache_file_busy is busy");
+    }
+
+    g_netcache_file_busy = 1;
+    
+    g_write_file_no_proc_times = 0;
+    if ((fp = fopen("/opt/myapp/cdr_recorder/netfile/cache","a")) == NULL)
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "The file %s can not be opened", "cache");
+        g_system_event_occur[CDR_EVENT_FILE_RECORD_FAULT] = 1;
+        return;
+    }
+    
+    /* 讲数据写入缓存文件cache */
+    fprintf(fp, "%s\r\n", data);
+    fclose(fp);
+    
+    cdr_diag_log(CDR_LOG_DEBUG, "The cdr_write_net_data_to_file data=%s", data);
+    g_netcache_file_busy = 0;
+    return;
+}
+
 void cdr_add_netdata_to_mysql()
 {
     int i;
@@ -849,9 +952,134 @@ void cdr_add_netdata_to_mysql()
         sprintf(data_info, "'%s', '%02x%02x%02x%02x%02x', '%02x%02x%02x%02x%02x', '%02x%02x', '%02x', '%s', '%x', '%x'", \
                     time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, buff[recv_len-2],data_token);
         
-        mysql_insert_net_data_to_table(data_info);
+        if (mysql_insert_net_data_to_table(data_info) != CDR_OK)
+        {
+            //数据插入失败
+            cdr_write_net_data_to_file(data_info);
+        }
     }
     
     close(server_sock);
     return;    
 }
+
+//网口文件内容存入到数据库
+void cdr_add_netfile_to_mysql()
+{
+    char str_line[1000] = {0};
+    char file_name[200] = {0};
+    char time_info[30] = {0};
+    FILE *fp_cache;
+    FILE *fp_tmp;
+    int insert_fail = 0;
+    
+    cdr_diag_log(CDR_LOG_INFO, "cdr_add_netfile_to_mysql >>>>>>>>>>>>>>>>>>>>>>>>>>in");
+    
+    while (1) 
+    {
+        sleep(3); /* 延时3s */
+        if (g_netcache_file_busy)
+        {
+            continue;
+        }
+        
+        //是否有要存入数据库的文件
+        if (access("/opt/myapp/cdr_recorder/netfile/cache2", F_OK) != 0) //没有
+        {
+            if (access("/opt/myapp/cdr_recorder/netfile/cache", F_OK) != 0)
+            {
+                continue;
+            }
+            else
+            {
+                while(g_netcache_file_busy)
+                {
+                    cdr_diag_log(CDR_LOG_INFO, "cdr_add_netfile_to_mysql g_netcache_file_busy is busy");
+                }
+    
+                g_netcache_file_busy = 1;
+                rename("/opt/myapp/cdr_recorder/netfile/cache", "/opt/myapp/cdr_recorder/netfile/cache2");
+                g_netcache_file_busy = 0;
+                continue;
+            }
+        }
+
+        
+        /* 打开cache2文件和临时数据缓存文件tmp */
+        if (((fp_cache = fopen("/opt/myapp/cdr_recorder/netfile/cache", "r")) == NULL) || ((fp_tmp = fopen("/opt/myapp/cdr_recorder/netfile/tmp.dat","w")) == NULL))
+        {
+            cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netfile_to_mysql faile, the file cache2 or tmp.dat can not be opened.\r\n");
+            continue;
+        }
+
+        while (!feof(fp_cache))
+        {
+            memset(str_line, 0, sizeof(str_line));
+            fgets(str_line, 1000, fp_cache);
+            
+            /* 最后一行 */
+            if (str_line[0] == '\0')
+            {
+                break;
+            }
+            
+            /* 添加失败, 将后续的数据保存到tmp文件中 */
+            if (insert_fail == 1)
+            {
+                fprintf(fp_tmp, "%s",str_line);
+                continue;
+            }
+            
+            if (mysql_insert_net_filedata_to_table(str_line) != CDR_OK)
+            {
+                fprintf(fp_tmp, "%s",str_line);
+                cdr_diag_log(CDR_LOG_DEBUG, "cdr_file_net_file_data_to_mysql fail, %s", str_line);
+                insert_fail = 1; /* 表示插入失败 */
+                continue;
+            }
+
+            cdr_diag_log(CDR_LOG_DEBUG, "cdr_file_net_file_data_to_mysql ok, %s", str_line);
+        }
+        fclose(fp_cache);
+        fclose(fp_tmp);
+        
+        /* 添加失败, 将tmp文件转换为cache2文件，后续循环用新的cache2继续添加 */
+        if (insert_fail == 1)
+        {
+            g_system_event_occur[CDR_EVENT_MYSQL_RECORD_FAULT] = 1;
+            remove("/opt/myapp/cdr_recorder/netfile/cache2");
+            rename("/opt/myapp/cdr_recorder/netfile/tmp.dat", "/opt/myapp/cdr_recorder/netfile/cache2");
+            remove("/opt/myapp/cdr_recorder/netfile/tmp.dat");
+            return;
+        }
+        
+        /* 添加成功, 将cache2文件添加到备份文件中 */
+        (void)cdr_cpy_file("/opt/myapp/cdr_recorder/netfile/cache2", "/opt/myapp/cdr_recorder/file/netfile/net.dat");
+        remove("/opt/myapp/cdr_recorder/netfile/tmpdat");
+        remove("/opt/myapp/cdr_recorder/netfile/cache2");
+        
+        /* 当文件大小大于CDR_FILE_DIR_MAX_SIZE_BYTE时，需要另起新文件记录 */
+        if (get_file_size("/opt/myapp/cdr_recorder/netfile/bf/net.dat") >= CDR_FILE_DIR_MAX_SIZE_BYTE)
+        {        
+            cdr_get_system_time(CDR_TIME_S, time_info);
+            sprintf(file_name, "/opt/myapp/cdr_recorder/netfile/bf/can%s.dat", time_info);
+            rename("/opt/myapp/cdr_recorder/netfile/bf/can.dat", file_name);
+
+            /* 预留的文件数量超过门限，删除最老的文件 */
+            while (1)
+            {
+                if (cdr_get_file_num("/opt/myapp/cdr_recorder/netfile/bf/", ".dat") >= CDR_DIR_BF_MAX_NUM)
+                {
+                    memset(file_name, 0 , sizeof(file_name));
+                    cdr_get_oldest_filename("/opt/myapp/cdr_recorder/netfile/bf/", file_name);
+                    remove(file_name);
+                    cdr_diag_log(CDR_LOG_INFO, "cdr_file_can_data_to_mysql delete oldest netfile %s", file_name);
+                    continue;
+                }
+                break;
+            }
+        }       
+    }
+}
+
+

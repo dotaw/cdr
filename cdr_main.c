@@ -5,6 +5,7 @@ void main()
     pthread_t pthread_record_data;
     pthread_t pthread_data_to_mysql;
     pthread_t pthread_netdata_to_mysql;
+    pthread_t pthread_netfile_to_mysql;
     pthread_t pthread_fmea;
     pthread_t pthread_led;
     
@@ -59,6 +60,12 @@ void main()
         cdr_system_reboot();
         return;
     }
+    if (cdr_creat_pthread_add_netfile_to_mysql(&pthread_netfile_to_mysql) != CDR_OK) //添加网口文件数据到数据库
+    {
+        cdr_diag_log(CDR_LOG_ERROR, "cdr_creat_pthread_add_netfile_to_mysql error");
+        cdr_system_reboot();
+        return;
+    }
     
     /* 8、周期检测线程 */
     if (cdr_creat_pthread_fmea_test(&pthread_fmea) != CDR_OK)
@@ -95,6 +102,7 @@ void main()
     pthread_join(pthread_record_data, NULL);
     pthread_join(pthread_data_to_mysql, NULL);
     pthread_join(pthread_netdata_to_mysql, NULL);
+    pthread_join(pthread_netfile_to_mysql, NULL);
     pthread_join(pthread_led, NULL);
     
     /* 14、结束处理 */
@@ -116,6 +124,8 @@ void cdr_global_init()
         CDR_FILE_DIR_DIAGLOG_BF,
         CDR_FILE_DIR_CAN,
         CDR_FILE_DIR_CAN_BF,
+        CDR_FILE_DIR_NET,
+        CDR_FILE_DIR_NET_BF,
     };
     int i;
     DIR *dir;
@@ -123,6 +133,7 @@ void cdr_global_init()
     /* 全局变量初始化 */
     g_socket_fd = 0;
     g_cache1_file_busy = 0;
+    g_netcache_file_busy = 0;
     g_dev_time_calibration_busy = 0;
     g_dev_run_time_record_busy = 0;
     g_diaglog_record_busy = 0;
@@ -139,6 +150,7 @@ void cdr_global_init()
     memset(g_system_event_no_occur_num, 0, sizeof(g_system_event_no_occur_num));
     g_mysql_conn = NULL;
     g_mysql_conn_net = NULL;
+    g_mysql_conn_net_file = NULL;
     
     /* 目录不存在，创建目录 */
     for (i = 0; i < sizeof(directory)/sizeof(directory[0]); i++)
@@ -329,6 +341,30 @@ int cdr_creat_pthread_add_netdata_to_mysql(pthread_t *pthread_netdata_to_mysql)
     }
     
     cdr_diag_log(CDR_LOG_ERROR, "cdr_creat_pthread_add_netdata_to_mysql ..............................fail");
+    cdr_user_log(CDR_USR_LOG_TYPE_INIT_PTHREAD, CDR_ERROR);
+    return CDR_ERROR;
+}
+
+
+/* 启动网口文件数据存储线程，如果失败，尝试3次，3次都失败，上报失败 */
+int cdr_creat_pthread_add_netfile_to_mysql(pthread_t *pthread_netfile_to_mysql)
+{
+    int i;
+    int ret;
+
+    for (i = 0; i < CDR_FAIL_TRY_TIMES; i++)
+    {
+        ret = pthread_create(pthread_netfile_to_mysql, NULL, (void *)&cdr_add_netfile_to_mysql, NULL);  /* 线程创建 */
+        if (ret != CDR_OK) 
+        {
+            cdr_diag_log(CDR_LOG_ERROR, "cdr_creat_pthread_add_netfile_to_mysql error, ret=0x%x, times=%u", ret, i);
+            continue;
+        }
+        cdr_diag_log(CDR_LOG_INFO, "cdr_creat_pthread_add_netfile_to_mysql ..............................ok");
+        return CDR_OK;
+    }
+    
+    cdr_diag_log(CDR_LOG_ERROR, "cdr_creat_pthread_add_netfile_to_mysql ..............................fail");
     cdr_user_log(CDR_USR_LOG_TYPE_INIT_PTHREAD, CDR_ERROR);
     return CDR_ERROR;
 }

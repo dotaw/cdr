@@ -62,6 +62,9 @@
 #define CDR_FILE_DIR_DIAGLOG_BF    "/opt/myapp/cdr_recorder/diag/bf/"       /* 诊断日志的缓存目录，数量有最大门限CDR_DIR_BF_MAX_NUM */
 #define CDR_FILE_DIR_CAN           "/opt/myapp/cdr_recorder/file/"          /* 文件记录的目录 */
 #define CDR_FILE_DIR_CAN_BF        "/opt/myapp/cdr_recorder/file/bf/"       /* 文件记录的备份目录，数量有最大门限CDR_DIR_BF_MAX_NUM */
+#define CDR_FILE_DIR_NET           "/opt/myapp/cdr_recorder/netfile/"          /* 文件记录的目录 */
+#define CDR_FILE_DIR_NET_BF        "/opt/myapp/cdr_recorder/netfile/bf/"       /* 文件记录的备份目录，数量有最大门限CDR_DIR_BF_MAX_NUM */
+
 
 #define CDR_DATA_TABLE_PF41           "PF_41"         /* 存储PF等于0x41的数据 */
 #define CDR_DATA_TABLE_PF42           "PF_42"         /* 存储PF等于0x42的数据 */
@@ -193,7 +196,8 @@ cdr_led_set_state_t g_led_state;                  /* LED状态灯当前状态 */
 cdr_dev_run_time_t g_dev_run_time;                /* 设备的运行时间记录 */
 MYSQL *g_mysql_conn;                              /* 代开的数据库id */
 MYSQL *g_mysql_conn_net;                          /* 网口代开的数据库id */
- 
+MYSQL *g_mysql_conn_net_file;                     /* 网口文件代开的数据库id */
+int g_netcache_file_busy;                         /* 网口缓存文件cache是否正在被操作 */
 
 /* ---------------------------------------- 函数声明 ---------------------------------------- */
 /* cdr_main */
@@ -221,6 +225,7 @@ void cdr_record_can_data();
 /* mysql_record */
 void cdr_add_data_to_mysql();
 void cdr_add_netdata_to_mysql();
+void cdr_add_netfile_to_mysql();
 void cdr_mysql_end();
 
 /* cdr_fmea */
