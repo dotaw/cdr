@@ -917,40 +917,45 @@ void cdr_add_netdata_to_mysql()
         cdr_diag_log(CDR_LOG_DEBUG, "NET_DATA: %s", buff_display);
         printf("%s\r\n",buff_display);
         
+        memset(time_info, 0 , sizeof(time_info));
+        cdr_get_system_time(CDR_TIME_MS, time_info);
+        
+        memset(data_info, 0 , sizeof(data_info));
+        int data_token = 1;
         if (recv_len >= RECV_BUFF_LEN_MAX || recv_len < RECV_BUFF_LEN_MIN)
         {
             cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql error data recv_len=%d", recv_len);
-            continue;
+            sprintf(data_info, "'%s', '0', '0', '0', '0', '%s', '0', '0'", \
+                        time_info, buff_display);
         }
-        
-        if (buff[0] != 0xc0 || buff[recv_len - 1] != 0xc0) //初始位或结束位，错误
+        else if (buff[0] != 0xc0 || buff[recv_len - 1] != 0xc0) //初始位或结束位，错误
         {
             cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql error data type recv_len=%d", recv_len);
-            continue;
+            
+            sprintf(data_info, "'%s', '0', '0', '0', '0', '%s', '0', '0'", \
+                        time_info, buff_display);
         }
-        
-        //数据正常，存入数据库        
-        data_len = recv_len - RECV_BUFF_LEN_MIN;
-        
-        int data_token = 1;
-        if (buff[11] != recv_len - 2)
+        else
         {
-            data_token = 0;
-        }
-        memset(time_info, 0 , sizeof(time_info));
-        memset(data_info, 0 , sizeof(data_info));
-        
-        buff_display_int = 0;
-        memset(buff_display, 0 , sizeof(buff_display));
-        for (i = 0; i < data_len; i++)
-        {
-            buff_display_int += sprintf(buff_display + buff_display_int, "%02x", buff[i + 14]); //数据从14开始
-        }
-        
-        cdr_get_system_time(CDR_TIME_MS, time_info);
-        
-        sprintf(data_info, "'%s', '%02x%02x%02x%02x%02x', '%02x%02x%02x%02x%02x', '%02x%02x', '%02x', '%s', '%x', '%x'", \
-                    time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, buff[recv_len-2],data_token);
+            //数据正常，存入数据库        
+            data_len = recv_len - RECV_BUFF_LEN_MIN;
+            
+            if (buff[11] != recv_len - 2)
+            {
+                data_token = 0;
+            }
+            
+            buff_display_int = 0;
+            memset(buff_display, 0 , sizeof(buff_display));
+            for (i = 0; i < data_len; i++)
+            {
+                buff_display_int += sprintf(buff_display + buff_display_int, "%02x", buff[i + 14]); //数据从14开始
+            }
+            
+            sprintf(data_info, "'%s', '%02x%02x%02x%02x%02x', '%02x%02x%02x%02x%02x', '%02x%02x', '%02x', '%s', '%x', '%x'", \
+                        time_info, buff[1], buff[2], buff[3], buff[4], buff[5], buff[6], buff[7], buff[8], buff[9], buff[10], buff[11], buff[12], buff[13], buff_display, buff[recv_len-2],data_token);
+
+        }        
         
         if (mysql_insert_net_data_to_table(data_info) != CDR_OK)
         {
