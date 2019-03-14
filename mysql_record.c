@@ -924,14 +924,30 @@ void cdr_add_netdata_to_mysql()
         int data_token = 1;
         if (recv_len >= RECV_BUFF_LEN_MAX || recv_len < RECV_BUFF_LEN_MIN)
         {
-            cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql error data recv_len=%d", recv_len);
-            sprintf(data_info, "'%s', '0', '0', '0', '0', '%s', '0', '0'", \
-                        time_info, buff_display);
+            data_token = 0;
         }
         else if (buff[0] != 0xc0 || buff[recv_len - 1] != 0xc0) //初始位或结束位，错误
         {
-            cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql error data type recv_len=%d", recv_len);
-            
+            data_token = 0;
+        }
+        else
+        {
+            if (buff[11] != recv_len - 2)
+            {
+                data_token = 0;
+            }
+        }
+        
+        buff_display_int = 0;
+        memset(buff_display, 0 , sizeof(buff_display));
+        if (data_token == 0)
+        {
+
+            for (i = 0; i < recv_len; i++)
+            {
+                buff_display_int += sprintf(buff_display + buff_display_int, "%02x", buff[i]);
+            }
+            cdr_diag_log(CDR_LOG_ERROR, "cdr_add_netdata_to_mysql error data type recv_len=%d", recv_len);            
             sprintf(data_info, "'%s', '0', '0', '0', '0', '%s', '0', '0'", \
                         time_info, buff_display);
         }
@@ -940,13 +956,6 @@ void cdr_add_netdata_to_mysql()
             //数据正常，存入数据库        
             data_len = recv_len - RECV_BUFF_LEN_MIN;
             
-            if (buff[11] != recv_len - 2)
-            {
-                data_token = 0;
-            }
-            
-            buff_display_int = 0;
-            memset(buff_display, 0 , sizeof(buff_display));
             for (i = 0; i < data_len; i++)
             {
                 buff_display_int += sprintf(buff_display + buff_display_int, "%02x", buff[i + 14]); //数据从14开始
